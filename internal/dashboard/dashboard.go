@@ -7,14 +7,12 @@ import (
 	"fmt"
 	"html/template"
 	"log"
-	"net/http"
 	"net"
+	"net/http"
 	"sync"
 	"time"
 
 	"github.com/user/optinet/internal/monitor"
-	"github.com/user/optinet/internal/hotspot"
-
 )
 
 //go:embed index.html
@@ -27,7 +25,6 @@ type Server struct {
 	mu           sync.RWMutex
 	proxyStatus  string
 	serverStatus string
-	hotspot      *hotspot.Manager
 }
 
 func NewServer(addr string, mon *monitor.Monitor) *Server {
@@ -36,7 +33,6 @@ func NewServer(addr string, mon *monitor.Monitor) *Server {
 		monitor:      mon,
 		proxyStatus:  "off",
 		serverStatus: "running",
-		hotspot:      hotspot.NewManager(),
 	}
 }
 
@@ -59,7 +55,6 @@ func (ds *Server) Start(ctx context.Context) error {
 	mux.HandleFunc("/api/dns-servers", ds.handleDNSServers)
 	mux.HandleFunc("/api/status", ds.handleStatus)
 	mux.HandleFunc("/api/game-servers", ds.handleGameServers)
-	mux.HandleFunc("/api/hotspot", ds.handleHotspot)
 
 	server := &http.Server{Addr: ds.addr, Handler: mux}
 
@@ -77,11 +72,6 @@ func (ds *Server) Start(ctx context.Context) error {
 	return nil
 }
 
-
-// SetHotspot registers the hotspot manager
-func (ds *Server) SetHotspot(hs *hotspot.Manager) {
-	ds.hotspot = hs
-}
 func (ds *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
@@ -89,7 +79,6 @@ func (ds *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	metrics := ds.monitor.GetMetrics()
-
 	data := map[string]interface{}{
 		"Latency":     fmt.Sprintf("%.1f", metrics.Latency),
 		"LatencyMax":  fmt.Sprintf("%.1f", metrics.LatencyMax),
@@ -99,6 +88,7 @@ func (ds *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		"Connections": metrics.Connections,
 		"UpSpeed":     fmt.Sprintf("%.1f", metrics.UpSpeed),
 		"DownSpeed":   fmt.Sprintf("%.1f", metrics.DownSpeed),
+		"Score":       fmt.Sprintf("%.1f", metrics.Score),
 	}
 
 	ds.mu.RLock()
@@ -122,10 +112,10 @@ func (ds *Server) handleDNSServers(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	servers := []map[string]interface{}{
-		{"name": "Cloudflare", "addr": "1.1.1.1", "latency": "—"},
-		{"name": "Google", "addr": "8.8.8.8", "latency": "—"},
-		{"name": "Quad9", "addr": "9.9.9.9", "latency": "—"},
-		{"name": "OpenDNS", "addr": "208.67.222.222", "latency": "—"},
+		{"name": "Cloudflare", "addr": "1.1.1.1", "latency": "-"},
+		{"name": "Google", "addr": "8.8.8.8", "latency": "-"},
+		{"name": "Quad9", "addr": "9.9.9.9", "latency": "-"},
+		{"name": "OpenDNS", "addr": "208.67.222.222", "latency": "-"},
 	}
 	json.NewEncoder(w).Encode(servers)
 }
@@ -135,46 +125,12 @@ func (ds *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	ds.mu.RLock()
 	status := map[string]interface{}{
-		"proxy":   ds.proxyStatus,
-		"server":  ds.serverStatus,
-		"uptime":  time.Now().Unix(),
+		"proxy":  ds.proxyStatus,
+		"server": ds.serverStatus,
+		"uptime": time.Now().Unix(),
 	}
 	ds.mu.RUnlock()
 	json.NewEncoder(w).Encode(status)
-}
-
-
-func (ds *Server) handleHotspot(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-
-	if r.Method == "POST" {
-		// Start hotspot
-		go func() {
-			if err := ds.hotspot.Start(); err != nil {
-				log.Printf("[Dashboard] Hotspot error: %v", err)
-			}
-		}()
-		json.NewEncoder(w).Encode(map[string]string{"status": "starting"})
-		return
-	}
-
-	// GET - return hotspot status
-	cfg := ds.hotspot.GetConfig()
-	status := ds.hotspot.GetStatus()
-	clientIP := ds.hotspot.GetClientIP()
-
-	resp := map[string]interface{}{
-		"status":     status,
-		"ssid":       cfg.SSID,
-		"password":   cfg.Password,
-		"band":       cfg.Band,
-		"client_ip":  clientIP,
-		"proxy_host": "192.168.43.1",
-		"proxy_port": 1080,
-		"dashboard":  "http://192.168.43.1:9090",
-	}
-	json.NewEncoder(w).Encode(resp)
 }
 
 func (ds *Server) handleGameServers(w http.ResponseWriter, r *http.Request) {

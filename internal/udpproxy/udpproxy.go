@@ -116,6 +116,11 @@ func (s *Server) Start(ctx context.Context) error {
 }
 
 func (s *Server) handlePacket(data []byte, clientAddr *net.UDPAddr) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("[UDP] Recovered from panic: %v", r)
+		}
+	}()
 	key := clientAddr.String()
 
 	// Check if we have an existing session
@@ -182,6 +187,11 @@ func (s *Server) handlePacket(data []byte, clientAddr *net.UDPAddr) {
 }
 
 func (s *Server) relayResponses(session *Session, key string) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("[UDP] Recovered from panic: %v", r)
+		}
+	}()
 	buf := make([]byte, 65507)
 	for {
 		session.TargetConn.SetDeadline(time.Now().Add(s.sessionTTL))

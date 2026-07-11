@@ -154,6 +154,11 @@ func (s *Server) Start(ctx context.Context) error {
 }
 
 func (s *Server) handleConnection(client net.Conn) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("[Proxy] Recovered from panic: %v", r)
+		}
+	}()
 	defer client.Close()
 	defer atomic.AddInt32(&s.stats.ConnsActive, -1)
 
@@ -345,6 +350,11 @@ func (ss *SOCKS5Server) Start(ctx context.Context) error {
 }
 
 func (ss *SOCKS5Server) handleSOCKS5(conn net.Conn) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("[SOCKS5] Recovered from panic: %v", r)
+		}
+	}()
 	defer conn.Close()
 	defer atomic.AddInt32(&ss.stats.ConnsActive, -1)
 
@@ -465,6 +475,11 @@ func (r *bytesReader) Read(p []byte) (int, error) {
 
 // handleSOCKS5FromReader handles SOCKS5 from a reader with peeked data
 func (s *Server) handleSOCKS5FromReader(conn net.Conn, reader io.Reader, peeked []byte) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("[Proxy] Recovered from panic: %v", r)
+		}
+	}()
 	// Read remaining SOCKS5 handshake data
 	br := bufio.NewReader(reader)
 	

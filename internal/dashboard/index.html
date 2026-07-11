@@ -101,11 +101,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   <canvas id="latencyChart"></canvas>
 </div>
 
-<div class="card full" style="background: linear-gradient(135deg, #1a1040, #121829); border: 1px solid rgba(124,58,237,0.3);">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-    <span class="card-label" style="color:#a78bfa;">🛜 Secured Hotspot</span>
-    <span id="hs-status" class="badge" style="background:#7c3aed;">OFF</span>
-  </div>
   <div class="stat-row"><span class="stat-label">Network</span><span class="stat-value" id="hs-ssid">—</span></div>
   <div class="stat-row"><span class="stat-label">Password</span><span class="stat-value" id="hs-password" style="font-family:monospace;letter-spacing:2px;">—</span></div>
   <div class="stat-row"><span class="stat-label">Connected</span><span class="stat-value" id="hs-client">—</span></div>
@@ -271,54 +266,6 @@ setInterval(fetchGameServers, 5000);
 fetchMetrics();
 fetchGameServers();
 setTimeout(initChart, 100);
-
-// Hotspot management
-async function fetchHotspot() {
-  try {
-    const res = await fetch('/api/hotspot');
-    const d = await res.json();
-    
-    document.getElementById('hs-ssid').textContent = d.ssid || '—';
-    document.getElementById('hs-password').textContent = d.password || '—';
-    
-    const statusEl = document.getElementById('hs-status');
-    if (d.status === 'on') {
-      statusEl.textContent = '🟢 ON';
-      statusEl.style.background = '#22d45c';
-    } else if (d.status === 'starting') {
-      statusEl.textContent = '⏳ STARTING';
-      statusEl.style.background = '#f59e0b';
-    } else {
-      statusEl.textContent = '⚫ OFF';
-      statusEl.style.background = '#475569';
-    }
-    
-    document.getElementById('hs-client').textContent = d.client_ip || 'None';
-  } catch(e) {}
-}
-
-document.getElementById('hs-btn').addEventListener('click', async function() {
-  var btn = this;
-  var result = document.getElementById('hs-result');
-  btn.textContent = '⏳ Creating...';
-  btn.disabled = true;
-  result.textContent = 'Starting secured hotspot...';
-  
-  try {
-    const res = await fetch('/api/hotspot', { method: 'POST' });
-    const d = await res.json();
-    result.textContent = '📡 Hotspot starting - connect with the password shown above!';
-    setTimeout(fetchHotspot, 3000);
-  } catch(e) {
-    result.textContent = 'Error: ' + e.message;
-  }
-  
-  btn.textContent = '🛜 Start Hotspot';
-  btn.disabled = false;
-});
-
-setInterval(fetchHotspot, 5000);
-setTimeout(fetchHotspot, 2000);
 
 </script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
