@@ -22,6 +22,7 @@ import (
 	"github.com/user/optinet/internal/proxy"
 	"github.com/user/optinet/internal/tcpopt"
 	"github.com/user/optinet/internal/udpproxy"
+	"github.com/user/optinet/internal/hotspot"
 )
 
 var (
@@ -101,7 +102,20 @@ func main() {
 		}
 	}()
 
-	// Start monitoring
+		// Start hotspot
+	hs := hotspot.NewManager()
+	go func() {
+		time.Sleep(1 * time.Second)
+		log.Printf("[Hotspot] 🛜 Initializing secured hotspot...")
+		if err := hs.Start(); err != nil {
+			log.Printf("[Hotspot] Info: %v", err)
+		}
+	}()
+
+	// Register hotspot with dashboard
+	time.Sleep(100 * time.Millisecond)
+	dashServer.SetHotspot(hs)
+// Start monitoring
 	go monitoringLoop(ctx, mon, latencyTester)
 
 	// Start benchmark API
@@ -133,6 +147,11 @@ func main() {
 	_ = bufferPool
 	_ = tcpOptions
 
+	// Display hotspot info after startup
+	go func() {
+		time.Sleep(3 * time.Second)
+		fmt.Print(hs.DisplayInfo())
+	}()
 	// Wait for shutdown
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
