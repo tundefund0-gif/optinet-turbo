@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>OptiNet Turbo</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root { --bg: #0a0e17; --card: #121829; --accent: #00f0ff; --accent2: #7c3aed; --green: #22d45c; --red: #ef4444; --orange: #f59e0b; --text: #e2e8f0; --muted: #64748b; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 12px; }
+.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.logo { font-size: 20px; font-weight: 800; }
+.logo span { color: var(--accent); }
+.badge { background: var(--accent2); color: #fff; padding: 3px 10px; border-radius: 20px; font-size: 10px; font-weight: 600; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.card { background: var(--card); border-radius: 12px; padding: 12px; border: 1px solid rgba(255,255,255,0.05); }
+.card.full { grid-column: 1 / -1; }
+.card-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px; }
+.card-value { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.card-value.green { color: var(--green); }
+.card-value.red { color: var(--red); }
+.card-value.accent { color: var(--accent); }
+.card-value.orange { color: var(--orange); }
+.card-unit { font-size: 12px; color: var(--muted); font-weight: 400; margin-left: 3px; }
+.score-ring { display: flex; align-items: center; justify-content: center; gap: 12px; }
+.score-circle { width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; position: relative; }
+.score-circle.excellent { background: rgba(34,212,92,0.2); color: var(--green); border: 3px solid var(--green); }
+.score-circle.good { background: rgba(0,240,255,0.2); color: var(--accent); border: 3px solid var(--accent); }
+.score-circle.fair { background: rgba(245,158,11,0.2); color: var(--orange); border: 3px solid var(--orange); }
+.score-circle.poor { background: rgba(239,68,68,0.2); color: var(--red); border: 3px solid var(--red); }
+.score-label { font-size: 11px; color: var(--muted); }
+.vpn-toggle { display: flex; align-items: center; gap: 10px; background: var(--card); border-radius: 12px; padding: 12px; border: 1px solid rgba(255,255,255,0.05); grid-column: 1 / -1; }
+.toggle { position: relative; width: 48px; height: 26px; flex-shrink: 0; }
+.toggle input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #1e293b; border-radius: 26px; transition: 0.3s; }
+.slider:before { content: ""; position: absolute; height: 20px; width: 20px; left: 3px; bottom: 3px; background: #475569; border-radius: 50%; transition: 0.3s; }
+.toggle input:checked + .slider { background: var(--accent2); }
+.toggle input:checked + .slider:before { transform: translateX(22px); background: #fff; }
+.vpn-label { font-size: 13px; font-weight: 600; }
+.vpn-sub { font-size: 11px; color: var(--muted); margin-left: auto; }
+#chart-container { background: var(--card); border-radius: 12px; padding: 12px; border: 1px solid rgba(255,255,255,0.05); grid-column: 1 / -1; }
+#chart-container canvas { width: 100% !important; height: 140px !important; }
+.server-list { grid-column: 1 / -1; background: var(--card); border-radius: 12px; padding: 12px; border: 1px solid rgba(255,255,255,0.05); }
+.server-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 13px; }
+.server-item:last-child { border-bottom: none; }
+.server-name { font-weight: 500; }
+.server-ping { font-variant-numeric: tabular-nums; }
+.server-ping.green { color: var(--green); }
+.server-ping.orange { color: var(--orange); }
+.server-ping.red { color: var(--red); }
+.status-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; }
+.status-dot.green { background: var(--green); }
+.status-dot.red { background: var(--red); }
+.bench-btn { background: var(--accent2); border: none; color: white; padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; width: 100%; }
+.bench-btn:active { opacity: 0.8; }
+.bench-result { margin-top: 8px; font-size: 11px; color: var(--muted); }
+.footer { text-align: center; font-size: 10px; color: var(--muted); margin-top: 16px; padding: 8px; }
+.stat-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px; }
+.stat-label { color: var(--muted); }
+.stat-value { font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">Opti<span>Net</span> <span style="font-size:11px;color:var(--muted);font-weight:400;">Turbo</span></div>
+  <span class="badge">⚡ LIVE</span>
+</div>
+
+<div class="grid">
+  <div class="card">
+    <div class="card-label">Latency</div>
+    <div class="card-value green" id="latency">0.0<span class="card-unit">ms</span></div>
+  </div>
+  <div class="card">
+    <div class="card-label">Jitter</div>
+    <div class="card-value accent" id="jitter">0.0<span class="card-unit">ms</span></div>
+  </div>
+  <div class="card">
+    <div class="card-label">Score</div>
+    <div class="card-value" id="score">0<span class="card-unit">/100</span></div>
+  </div>
+  <div class="card">
+    <div class="card-label">DNS</div>
+    <div class="card-value" id="dns-server" style="font-size:14px;">—<span class="card-unit"></span></div>
+  </div>
+</div>
+
+<div class="vpn-toggle">
+  <div>
+    <div class="vpn-label">VPN Overlay</div>
+    <div class="vpn-sub" id="vpn-status-text">Disconnected</div>
+  </div>
+  <label class="toggle">
+    <input type="checkbox" id="vpn-toggle">
+    <span class="slider"></span>
+  </label>
+</div>
+
+<div id="chart-container">
+  <canvas id="latencyChart"></canvas>
+</div>
+
+<div class="server-list">
+  <div class="card-label" style="margin-bottom:8px;">Game Servers</div>
+  <div id="server-list-inner"></div>
+</div>
+
+<div class="grid" style="margin-top:8px;">
+  <div class="card full">
+    <button class="bench-btn" id="bench-btn">📊 Run Full Benchmark</button>
+    <div class="bench-result" id="bench-result">Tap to measure your network</div>
+  </div>
+</div>
+
+<div class="server-list">
+  <div class="card-label" style="margin-bottom:8px;">Network Details</div>
+  <div id="stats-details">
+    <div class="stat-row"><span class="stat-label">Packet Loss</span><span class="stat-value" id="stat-loss">0%</span></div>
+    <div class="stat-row"><span class="stat-label">DNS Speed</span><span class="stat-value" id="stat-dns">—</span></div>
+    <div class="stat-row"><span class="stat-label">Connection Quality</span><span class="stat-value" id="stat-quality">—</span></div>
+  </div>
+</div>
+
+<div class="footer">
+  OptiNet Turbo v2.0 — Built with Go ⚡
+</div>
+
+<script>
+let chart;
+let historyData = [];
+
+const CTX = document.getElementById('latencyChart').getContext('2d');
+
+function initChart() {
+  if (chart) chart.destroy();
+  chart = new Chart(CTX, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [{
+        label: 'Latency (ms)',
+        data: [],
+        borderColor: '#22d45c',
+        backgroundColor: 'rgba(34,212,92,0.08)',
+        fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: { duration: 150 },
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { display: false, grid: { display: false } },
+        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#64748b', font: { size: 9 } } }
+      },
+      interaction: { intersect: false, mode: 'index' }
+    }
+  });
+}
+
+function updateChart(value) {
+  historyData.push(value);
+  if (historyData.length > 60) historyData.shift();
+  if (!chart) initChart();
+  chart.data.labels = historyData.map(function(_, i) { return i; });
+  chart.data.datasets[0].data = historyData;
+  chart.update('none');
+}
+
+async function fetchMetrics() {
+  try {
+    const res = await fetch('/api/metrics');
+    const d = await res.json();
+
+    document.getElementById('latency').innerHTML = d.latency.toFixed(1) + '<span class="card-unit">ms</span>';
+    document.getElementById('jitter').innerHTML = d.jitter.toFixed(1) + '<span class="card-unit">ms</span>';
+
+    if (d.score !== undefined) {
+      const scoreEl = document.getElementById('score');
+      scoreEl.innerHTML = Math.round(d.score) + '<span class="card-unit">/100</span>';
+      if (d.score >= 70) scoreEl.className = 'card-value green';
+      else if (d.score >= 50) scoreEl.className = 'card-value orange';
+      else scoreEl.className = 'card-value red';
+    }
+
+    if (d.latency > 0) updateChart(d.latency);
+
+    const latEl = document.getElementById('latency');
+    if (d.latency < 50) latEl.className = 'card-value green';
+    else if (d.latency < 100) latEl.className = 'card-value accent';
+    else if (d.latency < 200) latEl.className = 'card-value orange';
+    else latEl.className = 'card-value red';
+
+    document.getElementById('stat-loss').textContent = d.packet_loss !== undefined ? d.packet_loss.toFixed(1) + '%' : '0%';
+    document.getElementById('stat-dns').textContent = d.dns_speed ? d.dns_speed.toFixed(1) + ' ms' : '—';
+  } catch(e) {}
+}
+
+async function fetchGameServers() {
+  try {
+    const res = await fetch('/api/game-servers');
+    const servers = await res.json();
+    var html = '';
+    servers.forEach(function(s) {
+      var dotClass = s.latency > 0 ? 'green' : 'red';
+      var pingClass = 'green';
+      var pingText = '—';
+      if (s.latency > 0) {
+        pingText = s.latency.toFixed(0) + 'ms';
+        if (s.latency > 100) pingClass = 'orange';
+        if (s.latency > 200) pingClass = 'red';
+      }
+      html += '<div class="server-item"><span><span class="status-dot ' + dotClass + '"></span><span class="server-name">' + s.name + '</span></span><span class="server-ping ' + pingClass + '" id="ping-' + s.name.toLowerCase() + '">' + pingText + '</span></div>';
+    });
+    document.getElementById('server-list-inner').innerHTML = html;
+  } catch(e) {}
+}
+
+document.getElementById('vpn-toggle').addEventListener('change', function() {
+  var st = document.getElementById('vpn-status-text');
+  if (this.checked) { st.textContent = 'Connected'; st.style.color = '#22d45c'; }
+  else { st.textContent = 'Disconnected'; st.style.color = '#64748b'; }
+});
+
+document.getElementById('bench-btn').addEventListener('click', async function() {
+  var btn = this;
+  var resultEl = document.getElementById('bench-result');
+  btn.textContent = '⏳ Running...';
+  btn.disabled = true;
+  resultEl.textContent = 'Measuring latency, DNS, and throughput...';
+
+  try {
+    const res = await fetch('/api/benchmark', { method: 'POST' });
+    const data = await res.json();
+    if (data.error) {
+      resultEl.textContent = 'Error: ' + data.error;
+    } else {
+      var lines = [];
+      lines.push('Network Score: ' + data.optimization_score.toFixed(1) + '/100');
+      if (data.dns_benchmark && data.dns_benchmark.fastest_server) {
+        lines.push('Best DNS: ' + data.dns_benchmark.fastest_server + ' (' + data.dns_benchmark.fastest_latency_ms.toFixed(2) + 'ms)');
+      }
+      if (data.latency_benchmark) {
+        lines.push('Latency: avg ' + data.latency_benchmark.avg_latency_ms.toFixed(1) + 'ms | jitter ' + data.latency_benchmark.jitter_ms.toFixed(1) + 'ms | loss ' + data.latency_benchmark.packet_loss.toFixed(1) + '%');
+      }
+      resultEl.innerHTML = '✅ ' + lines.join(' | ');
+    }
+  } catch(e) {
+    resultEl.textContent = 'Error running benchmark: ' + e.message;
+  }
+
+  btn.textContent = '📊 Run Full Benchmark';
+  btn.disabled = false;
+});
+
+setInterval(fetchMetrics, 2000);
+setInterval(fetchGameServers, 5000);
+fetchMetrics();
+fetchGameServers();
+setTimeout(initChart, 100);
+</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</body>
+</html>
