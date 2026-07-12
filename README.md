@@ -1,126 +1,271 @@
-# OptiNet — Smart Network Optimizer
+# OptiNet Turbo — Smart Network Optimizer
 
-> **College Project** — Optimize your network, lower your ping, boost your game score.
-
-## How It Works
+> **College Project** — Optimize your network, lower your ping, boost your game score.  
+> High-performance DNS optimizer + HTTP/SOCKS5 proxy with live dashboard.
 
 ```
-┌───────────────────────────────────────────┐
-│         Your Android (Termux)              │
-│                                           │
-│  ┌─────────────┐    ┌──────────────────┐  │
-│  │ OptiNet     │───▶│ Web Dashboard     │  │
-│  │ Go Server   │    │ (Browser @:9090)  │  │
-│  │             │    └──────────────────┘  │
-│  │ • DNS Opt   │                          │
-│  │ • Latency   │───▶ Proxy / VPN Overlay  │
-│  │ • Monitor   │    (HTTP :8080 / SOCKS5  │
-│  └─────────────┘     :1080)               │
-└───────────────────────────────────────────┘
-         │
-         ▼ Your game traffic gets optimized
+  ╔═══════════════════════════════════════════╗
+  ║         OptiNet v2.0 — Turbo Edition       ║
+  ║     High-Performance Network Optimizer     ║
+  ║           College Project                  ║
+  ╚═══════════════════════════════════════════╝
 ```
 
-### What it does:
-- **Smart DNS** — Finds fastest DNS server (Cloudflare, Google, Quad9...)
-- **Latency Monitor** — Pings game/CDN servers, tracks real-time ping
-- **HTTP Proxy** — Route your phone's WiFi through OptiNet for optimization
-- **SOCKS5 Proxy** — For apps that support SOCKS (works with Drony/Postern for full VPN overlay)
-- **Live Dashboard** — Beautiful real-time charts of your network performance
-- **VPN Overlay Toggle** — Turn optimization on/off from the dashboard
+---
 
-## Setup on Your Phone (No Root!)
+## Architecture
 
-### Step 1: Install Termux
-Download from **F-Droid** (NOT Play Store — Play Store version is outdated):
-https://f-droid.org/packages/com.termux/
+```
+┌─────────────────────────┐      Hotspot/WiFi       ┌──────────────────────┐
+│   SERVER PHONE (Termux) │◄──────────────────────►│   CLIENT PHONE       │
+│                         │                         │   (Gaming Phone)     │
+│  ┌───────────────────┐  │   SOCKS5 :1080          │                      │
+│  │   OptiNet Turbo   │  │   HTTP   :8080          │  ┌────────────────┐  │
+│  │                    │──┤──────────────────────────┤  Super Proxy    │  │
+│  │  • DNS Optimizer  │  │                         │  │ or Drony       │  │
+│  │  • Latency Monitor│  │   Dashboard :9090       │  │ (SOCKS5 client)│  │
+│  │  • HTTP Proxy     │  │   Bench API :9091       │  └────────────────┘  │
+│  │  • SOCKS5 Proxy   │  │   UDP Game  :5353       │                      │
+│  │  • Live Dashboard │  │                         │  Or WiFi Proxy       │
+│  └───────────────────┘  │                         │  HTTP :8080          │
+└─────────────────────────┘                         └──────────────────────┘
+```
 
-### Step 2: Install Go & Build
+---
+
+## What It Does
+
+- **Smart DNS** — Benchmarks 5 major DNS servers (Google, Cloudflare, Quad9, etc.) and auto-selects the fastest
+- **Latency Monitor** — Pings game/CDN servers every 3 seconds, tracks real-time ping + jitter
+- **HTTP Proxy** (`:8080`) — Route your phone's WiFi proxy through OptiNet for HTTP optimization
+- **SOCKS5 Proxy** (`:1080`) — Full TCP proxy for apps that support SOCKS (gaming, streaming, etc.)
+- **UDP Game Proxy** (`:5353`) — UDP traffic forwarding for gaming
+- **Live Dashboard** (`:9090`) — Real-time charts of latency, DNS speed, connection stats
+- **Benchmark API** (`:9091`) — Run network benchmarks on demand
+- **Network Scoring** — Overall network quality score out of 100
+
+---
+
+## Server Setup (Remote Phone — Termux)
+
+### Prerequisites
+- Android phone with **Termux** installed
+- **Go** installed: `pkg install golang`
+- Phone is hosting a **WiFi hotspot** or on same network as client
+
+### Step 1: Install & Build
 ```bash
+# Update packages
 pkg update && pkg upgrade -y
 pkg install golang git -y
 
-# Copy the optinet folder to your phone, then:
-cd optinet
+# Clone the repo
+git clone https://github.com/tundefund0-gif/optinet-turbo.git
+cd optinet-turbo
+
+# Build
 go build -o optinetd ./cmd/optinetd
 ```
 
-### Step 3: Run It
+### Step 2: Start the Server
 ```bash
+# Run in foreground (for testing)
 ./optinetd
+
+# Or run in background
+nohup ./optinetd > optinet.log 2>&1 &
+
+# Or with tmux (recommended)
+tmux new-session -d -s optinet './optinetd'
 ```
 
-### Step 4: Open Dashboard
-Open your phone's browser to: **http://localhost:9090**
+### Step 3: Check It's Running
+```bash
+# View logs
+cat optinet.log
 
-### Step 5: Connect via Proxy
+# You should see:
+#   Dashboard:  http://192.168.x.x:9090
+#   HTTP Proxy: 192.168.x.x:8080
+#   SOCKS5:     192.168.x.x:1080
 
-**Option A — WiFi Proxy (Easy):**
-- Settings → WiFi → Long-press your network → Modify network
-- Advanced options → Proxy → Manual
-- Host: `localhost`  Port: `8080`
-- Only HTTP traffic goes through the optimizer
+# Test locally
+curl --socks5-hostname 127.0.0.1:1080 -s -o /dev/null -w '%{http_code}' http://google.com
+# Should return 200 or 301
+```
 
-**Option B — VPN Overlay (Full traffic, recommended):**
-- Install **Drony** or **Postern** from Play Store
-- Configure it to route **all traffic** through SOCKS5 proxy at `localhost:1080`
-- Every app's traffic gets optimized!
+---
 
-## Features
+## Client Phone Setup (Your Gaming Phone)
 
-| Feature | Description |
-|---------|-------------|
-| DNS Optimizer | Benchmarks 5 major DNS servers, uses the fastest |
-| Latency Tester | Pings game/CDN servers every 3 seconds |
-| Real-time Charts | Live latency graph on the dashboard |
-| HTTP Proxy | Port 8080 — standard HTTP proxy for browsers |
-| SOCKS5 Proxy | Port 1080 — full TCP proxy for VPN overlay |
-| Jitter Monitor | Tracks connection stability |
-| Speed Display | Shows simulated up/down speeds |
+Your gaming phone connects to the **server phone's hotspot** and routes traffic through OptiNet.
 
-## API Endpoints
+### Step 1: Connect to Hotspot
+- Connect your gaming phone to the server phone's **WiFi hotspot**
+- Note the server's IP address (e.g. `192.168.218.187`)
 
+### Step 2: Choose Your Proxy App
+
+#### Option A: Super Proxy (Simplest)
+1. Install **Super Proxy** from Play Store
+2. Open → tap **+**
+3. Enter:
+   - **Type**: `SOCKS5`
+   - **Host**: `192.168.218.187` (your server's hotspot IP)
+   - **Port**: `1080`
+4. Save → tap **Connect**
+5. Verify at: `http://192.168.218.187:9090`
+
+#### Option B: Drony (Per-app Routing)
+1. Install **Drony** from Play Store
+2. Open → **Settings** → **Network** → **WiFi**
+3. Select your hotspot → **Manual proxy**
+4. Enter:
+   - **Host**: `192.168.218.187`
+   - **Port**: `1080`
+   - **Type**: `SOCKS5`
+5. Back → tap **Start** (red icon turns green)
+
+#### Option C: Manual WiFi Proxy (HTTP only)
+- WiFi Settings → Long-press network → Modify network
+- Advanced → Proxy → **Manual**
+- Host: `192.168.218.187`
+- Port: `8080`
+*(Note: Only HTTP traffic routes through — some apps won't work)*
+
+---
+
+## Dashboard
+
+Open in any browser: **http://192.168.218.187:9090**
+
+**What you'll see:**
+- **Network Score** — Overall quality out of 100
+- **Latency Graph** — Real-time ping chart
+- **DNS Status** — Fastest detected DNS server
+- **Live Stats** — Active connections, throughput, uptime
+- **Jitter Monitor** — Connection stability tracking
+
+**API endpoints:**
 | Endpoint | Description |
 |----------|-------------|
-| `/` | Web dashboard |
-| `/api/metrics` | JSON latency/jitter/packet loss data |
+| `/api/metrics` | JSON latency/jitter/packet loss |
 | `/api/game-servers` | Game server ping list |
-| `/api/dns-servers` | DNS server benchmark results |
+| `/api/dns-servers` | DNS benchmark results |
 | `/api/status` | Server & proxy status |
+| `/api/benchmark` | Run speed benchmark |
 
-## Tech Stack
+---
 
-- **Go** — Core networking, concurrency, HTTP/SOCKS5 servers
-- **Embed** — Go 1.16+ embed for static assets
-- **Chart.js** — Real-time latency charts
-- **HTML/CSS** — Mobile-first dark UI
+## Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `OPTINET_PROXY_ADDR` | `8080` | HTTP proxy port |
+| `OPTINET_DASHBOARD_ADDR` | `9090` | Dashboard web UI port |
+
+No config file needed — just set env vars:
+```bash
+OPTINET_PROXY_ADDR=8080 OPTINET_DASHBOARD_ADDR=9090 ./optinetd
+```
+
+---
+
+## Building for Different Architectures
+
+```bash
+# Build for current system
+go build -o optinetd ./cmd/optinetd
+
+# Cross-compile for ARM32 (most Android phones)
+GOOS=linux GOARCH=arm GOARM=7 go build -o optinetd_arm ./cmd/optinetd
+
+# Cross-compile for ARM64
+GOOS=linux GOARCH=arm64 go build -o optinetd_arm64 ./cmd/optinetd
+
+# Cross-compile for x86_64
+GOOS=linux GOARCH=amd64 go build -o optinetd_amd64 ./cmd/optinetd
+```
+
+---
 
 ## Project Structure
 
 ```
 optinet/
-├── cmd/optinetd/main.go       # Entry point
+├── cmd/optinetd/
+│   └── main.go              # Entry point, orchestrates all services
 ├── internal/
-│   ├── dns/dns.go             # DNS optimizer
-│   ├── latency/latency.go     # Latency tester
-│   ├── proxy/proxy.go         # HTTP + SOCKS5 proxy
-│   ├── monitor/monitor.go     # Network metrics collector
-│   └── dashboard/dashboard.go # Web dashboard server
-├── web/index.html             # Dashboard HTML template
-├── Makefile                   # Build + setup targets
-├── setup_termux.sh            # Termux setup script
+│   ├── benchmark/
+│   │   └── benchmark.go     # Network scoring engine
+│   ├── dashboard/
+│   │   └── dashboard.go     # Web dashboard + live charts
+│   ├── dns/
+│   │   ├── dns.go           # DNS optimizer (benchmarks & selects fastest)
+│   │   └── dns_test.go
+│   ├── latency/
+│   │   ├── latency.go       # ICMP/TCP latency tester
+│   │   └── latency_test.go
+│   ├── monitor/
+│   │   ├── monitor.go       # Network metric collector
+│   │   └── monitor_test.go
+│   ├── pool/
+│   │   ├── pool.go          # Buffer pool for zero-copy relay
+│   │   └── pool_test.go
+│   ├── proxy/
+│   │   └── proxy.go         # HTTP + SOCKS5 proxy servers
+│   ├── speedtest/
+│   │   ├── speedtest.go     # Bandwidth measurement
+│   │   └── speedtest_test.go
+│   ├── tcpopt/
+│   │   ├── tcpopt.go        # TCP kernel optimizations
+│   │   └── tcpopt_test.go
+│   ├── udpproxy/
+│   │   └── udpproxy.go      # UDP game traffic proxy
+│   └── workerpool/
+│       └── workerpool.go    # Goroutine pool for concurrency
+├── go.mod
 └── README.md
 ```
 
+---
+
+## Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| Dashboard not loading | Check server: `ps aux \| grep optinetd` |
+| "address already in use" | Change ports via env vars or kill old process: `pkill -f optinetd` |
+| Super Proxy won't connect | Use **SOCKS5** type, not HTTP — port `1080` not `8080` |
+| High latency improvements | Make sure both phones are on 5GHz hotspot |
+| Connection drops | Keep server phone plugged in and screen on |
+| Wrong IP shown | Use `OPTINET_PROXY_ADDR` and check `ifconfig` for actual hotspot IP |
+| DNS errors | The server auto-selects fastest DNS — give it 5 seconds after start |
+
+---
+
+## Performance Tips
+
+- **5GHz hotspot** gives lower latency than 2.4GHz
+- **Keep server phone charging** — proxy drains battery
+- **Close background apps** on both phones for more bandwidth
+- **Check the dashboard** before gaming — aim for Network Score > 70
+- **Use SOCKS5** (port 1080) instead of HTTP proxy for full traffic routing
+
+---
+
 ## Why This Rocks for a College Project
 
-1. **Real networking concepts** — DNS, TCP, proxies, SOCKS5, latency, jitter
+1. **Real networking** — DNS, TCP, SOCKS5, latency, jitter, packet loss
 2. **Go concurrency** — Goroutines for parallel DNS testing, proxy connections
-3. **Full-stack** — Go backend + HTML/CSS/JS frontend
-4. **Works on real hardware** — Your actual phone, no emulator
-5. **Visually impressive** — Live charts, mobile UI, real-time updates
-6. **Practical problem** — Network optimization everyone understands
+3. **Full-stack** — Go backend + HTML/CSS/JS frontend with live charts
+4. **Works on real phones** — No emulator, actual hardware
+5. **Visually impressive** — Live dashboard, real-time metrics
+6. **Practical problem** — Network optimization that everyone understands
+7. **Benchmark scoring** — Quantifiable results (Network Score /100)
+
+---
 
 ## License
 
-MIT — Do whatever you want, this is a college project.
+MIT — College Project
